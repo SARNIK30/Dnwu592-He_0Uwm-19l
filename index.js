@@ -1,18 +1,103 @@
-import { Telegraf } from "telegraf";
+import { Telegraf, Markup } from "telegraf";
+import fetch from "node-fetch";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-bot.start(ctx =>
-  ctx.reply("📥 Пришли ссылку на видео — я попробую скачать.")
-);
+// ===== helpers =====
+function extractUrl(text = "") {
+  const m = text.match(/https?:\/\/\S+/i);
+  return m ? m[0].replace(/[)\]}>,.]+$/g, "") : null;
+}
+
+function detectPlatform(url) {
+  const u = url.toLowerCase();
+  if (u.includes("pinterest.") || u.includes("pin.it")) return "pinterest";
+  if (u.includes("instagram.com")) return "instagram";
+  if (u.includes("tiktok.com")) return "tiktok";
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+  if (/\.(mp4|mov|webm|mp3|m4a)(\?|$)/i.test(u)) return "direct";
+  return "unknown";
+}
+
+// Pinterest: вытаскиваем og:video из HTML
+async function pinterestGetVideoUrl(url) {
+  const res = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36",
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+
+  const og1 = html.match(/property=["']og:video["']\s+content=["']([^"']+)["']/i);
+  if (og1?.[1]) return og1[1];
+
+  const og2 = html.match(/property=["']og:video:url["']\s+content=["']([^"']+)["']/i);
+  if (og2?.[1]) return og2[1];
+
+  throw new Error("Видео не найдено (пин может быть не видео или доступ ограничен).");
+}
+
+// Universal: отправка по прямой ссылке
+async function sendDirect(ctx, url) {
+  // Telegram часто умеет отправлять по URL без скачивания на сервер
+  // (если не получится — скажет ошибку)
+  await ctx.replyWithVideo(url);
+}
+
+bot.start(async (ctx) => {
+  await ctx.reply(
+    "📥 Пришли ссылку.\n\n" +
+      "✅ Скачиваю: Pinterest (публичные видео) и прямые ссылки на файлы (.mp4/.mov/.mp3)\n" +
+      "ℹ️ Instagram/TikTok/YouTube — покажу информацию и кнопку открыть (без обхода защит)."
+  );
+});
 
 bot.on("text", async (ctx) => {
-  const text = ctx.message.text;
+  const url = extractUrl(ctx.message.text);
+  if (!url) return ctx.reply("Кинь ссылку одним сообщением 🙂");
 
-  if (!text.includes("http"))
-    return ctx.reply("Отправь ссылку 🙂");
+  const platform = detectPlatform(url);
 
-  await ctx.reply("✅ Видео скачано!\n🤝 Партнёр проекта: @TopChannel");
+  try {
+    if (platform === "pinterest") {
+      await ctx.reply("⏳ Ищу видео в Pinterest...");
+      const videoUrl = await pinterestGetVideoUrl(url);
+      await sendDirect(ctx, videoUrl);
+      return ctx.reply("✅ Готово!");
+    }
+
+    if (platform === "direct") {
+      await ctx.reply("⏳ Отправляю файл...");
+      await sendDirect(ctx, url);
+      return ctx.reply("✅ Готово!");
+    }
+
+    // “умный режим” без скачивания (без обхода защит)
+    if (platform === "instagram" || platform === "tiktok" || platform === "youtube") {
+      const pretty =
+        platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
+
+      return ctx.reply(
+        `ℹ️ Это ссылка ${pretty}.\n\n` +
+          `Я могу:\n` +
+          `• открыть её одной кнопкой\n` +
+          `• (по желанию) добавить скачивание только твоих видео через официальные API (там, где разрешено)\n\n` +
+          `Нажми кнопку ниже:`,
+        Markup.inlineKeyboard([Markup.button.url(`Открыть в ${pretty}`, url)])
+      );
+    }
+
+    return ctx.reply(
+      "❌ Пока не знаю как обработать эту ссылку.\n\n" +
+        "Поддерживаю:\n• Pinterest видео\n• прямые ссылки на .mp4/.mov/.mp3\n• IG/TT/YT — режим “Открыть”"
+    );
+  } catch (e) {
+    console.log(e);
+    return ctx.reply("❌ Не получилось обработать ссылку. Попробуй другой пин/другую ссылку.");
+  }
 });
 
 bot.launch();
