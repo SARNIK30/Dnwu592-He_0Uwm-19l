@@ -219,6 +219,7 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⛔ Нет доступа.")
 
     # ---- берём данные ----
+    user_count = len(users)
     total = stats.get("total_requests", 0)
     downloads = stats.get("downloads_ok", 0)
     cache = stats.get("served_from_cache", 0)
@@ -234,7 +235,7 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ---- красивый текст ----
     txt = f"""
 📊 <b>Pin Save Robot — Статистика</b>
-
+👥 Пользователи: <b>{user_count:,}</b>
 👥 Запросов всего: <b>{total:,}</b>
 📥 Успешных скачиваний: <b>{downloads:,}</b>
 ⚡ Отдано из кэша: <b>{cache:,}</b>
@@ -298,9 +299,15 @@ async def rofl_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(phrases[int(time.time()) % len(phrases)])
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
 
+    user_id = update.effective_user.id
+
+    # ---- считаем уникальных пользователей ----
+    if user_id not in users:
+        users.add(user_id)
+        save_users()
+
+    chat_id = update.effective_chat.id
     if user_id in banned:
         return
 
