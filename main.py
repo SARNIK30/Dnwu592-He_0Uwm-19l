@@ -212,37 +212,38 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(uid):
         return await update.message.reply_text("⛔ Нет доступа.")
 
-    txt = (
-        total = stats.get("total_requests", 0)
-downloads = stats.get("downloads_ok", 0)
-cache = stats.get("served_from_cache", 0)
-errors = stats.get("errors", 0)
-blocked = stats.get("blocked_big", 0)
-queue_size = queue.qsize()
-banned_count = len(banned)
+    # ---- берём данные ----
+    total = stats.get("total_requests", 0)
+    downloads = stats.get("downloads_ok", 0)
+    cache = stats.get("served_from_cache", 0)
+    errors = stats.get("errors", 0)
+    blocked = stats.get("blocked_big", 0)
+    queue_size = queue.qsize()
+    banned_count = len(banned)
 
-success = 100
-if total > 0:
-    success = 100 - (errors * 100 // total)
+    success = 100
+    if total > 0:
+        success = 100 - (errors * 100 // total)
 
-txt = f"""
+    # ---- красивый текст ----
+    txt = f"""
 📊 <b>Pin Save Robot — Статистика</b>
 
 👥 Запросов всего: <b>{total:,}</b>
 📥 Успешных скачиваний: <b>{downloads:,}</b>
 ⚡ Отдано из кэша: <b>{cache:,}</b>
 
-🚫 Слишком большие файлы: <b>{blocked:,}</b>
+🚫 Большие файлы: <b>{blocked:,}</b>
 ❌ Ошибки: <b>{errors:,}</b>
 
-🧠 Очередь сейчас: <b>{queue_size}</b>
-🔨 Забанено пользователей: <b>{banned_count}</b>
+🧠 Очередь: <b>{queue_size}</b>
+🔨 Забанено: <b>{banned_count}</b>
 
 🔥 Успешность: <b>{success}%</b>
 """
-    )
-    await update.message.reply_text(txt, parse_mode="HTML")
 
+    await update.message.reply_text(txt, parse_mode="HTML")
+    
 async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not is_admin(uid):
