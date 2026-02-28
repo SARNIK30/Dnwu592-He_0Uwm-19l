@@ -68,6 +68,12 @@ stats: Dict[str, Any] = load_json(STATS_FILE, {
     "errors": 0,
 })
 
+USERS_FILE = "users.json"
+users = set(load_json(USERS_FILE, []))
+
+def save_users():
+    save_json(USERS_FILE, sorted(list(users)))
+    
 # ----------------- HELPERS -----------------
 def extract_url(text: str) -> Optional[str]:
     m = URL_RE.search(text or "")
