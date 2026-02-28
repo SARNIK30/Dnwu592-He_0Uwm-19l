@@ -20,6 +20,23 @@ async function pinterestGetVideoUrl(url) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const html = await res.text();
 
+  // Ищем JSON с видео внутри страницы
+  const jsonMatch = html.match(/"video_list":({.*?})/);
+
+  if (jsonMatch?.[1]) {
+    const videoData = JSON.parse(jsonMatch[1]);
+    const firstKey = Object.keys(videoData)[0];
+    if (firstKey && videoData[firstKey]?.url) {
+      return videoData[firstKey].url;
+    }
+  }
+
+  throw new Error("Видео не найдено в JSON Pinterest.");
+}
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+
   const og1 = html.match(/property=["']og:video["']\s+content=["']([^"']+)["']/i);
   if (og1?.[1]) return og1[1];
 
