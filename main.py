@@ -188,10 +188,9 @@ def is_admin(user_id: int) -> bool:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📥 Кинь ссылку — поставлю в очередь и скачаю.\n"
+        "📥 Инструкция: кидаешь ссылку и получаешь видео.\n"
         f"⚙️ Лимит: {MAX_MB} МБ\n"
-        "🧠 Есть кэш: если это уже скачивали — отправлю мгновенно.\n"
-        "🛡️ Есть антиспам."
+        "🤖 Скачиваю из: Pinterest, Instagram, TikTok и т.д."
     )
 
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
