@@ -312,16 +312,14 @@ async def rofl_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
-if user_id not in users:
-    users.add(user_id)
-    save_users()
+    chat_id = update.effective_chat.id
 
-    # ---- считаем уникальных пользователей ----
+    # считаем пользователей
     if user_id not in users:
         users.add(user_id)
         save_users()
 
-    chat_id = update.effective_chat.id
+    # проверка бана
     if user_id in banned:
         return
 
