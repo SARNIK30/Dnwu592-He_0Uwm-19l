@@ -69,7 +69,18 @@ stats: Dict[str, Any] = load_json(STATS_FILE, {
 })
 
 USERS_FILE = "users.json"
-users = set(load_json(USERS_FILE, []))
+
+_raw_users = load_json(USERS_FILE, [])
+if isinstance(_raw_users, dict):
+    # если по ошибке сохранился dict — берём значения/ключи
+    _raw_users = list(_raw_users.keys())
+
+users = set()
+for x in _raw_users:
+    try:
+        users.add(int(x))
+    except Exception:
+        pass
 
 def save_users():
     save_json(USERS_FILE, sorted(list(users)))
@@ -301,6 +312,9 @@ async def rofl_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
+if user_id not in users:
+    users.add(user_id)
+    save_users()
 
     # ---- считаем уникальных пользователей ----
     if user_id not in users:
