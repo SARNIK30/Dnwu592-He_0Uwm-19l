@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinSave</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c10;--surface:#0d1117;--surface2:#141b24;
+  --border:#1e2d3d;--border2:#253545;
+  --accent:#00d4ff;--accent-dim:rgba(0,212,255,.12);
+  --green:#00ff88;--red:#ff4757;--yellow:#ffd32a;
+  --text:#c9d8e8;--text-dim:#5a7a95;
+  --mono:'IBM Plex Mono',monospace;--display:'Syne',sans-serif;
+}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;line-height:1.6}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:9999}
+.shell{max-width:800px;margin:0 auto;padding:0 20px 80px}
+
+/* HEADER */
+.header{padding:40px 0 28px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.logo-wrap{display:flex;align-items:center;gap:14px}
+.logo-icon{width:44px;height:44px;background:var(--accent);display:grid;place-items:center;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.logo-icon::after{content:'↓';font-family:var(--display);font-size:22px;font-weight:800;color:#000}
+.logo-text{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.5px;color:#fff}
+.logo-text span{color:var(--accent)}
+.status-badge{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--green);display:flex;align-items:center;gap:8px}
+.status-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TABS */
+.tabs{display:flex;gap:0;margin-top:28px;border-bottom:1px solid var(--border)}
+.tab{padding:12px 24px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--accent-dim);border-radius:3px;font-size:9px;margin-left:8px;color:var(--accent);vertical-align:middle}
+
+/* PANELS */
+.panel{display:none;padding-top:36px;animation:fadeUp .25s ease both}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* DOWNLOADER */
+.dl-prompt{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px}
+.dl-prompt::before{content:'> ';color:var(--accent)}
+.url-bar{display:flex;background:var(--surface);border:1px solid var(--border);transition:border-color .2s;position:relative}
+.url-bar:focus-within{border-color:var(--accent)}
+.url-bar::before{content:'URL';position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:9px;letter-spacing:.15em;color:var(--text-dim);pointer-events:none}
+.url-input{flex:1;background:none;border:none;color:var(--text);font-family:var(--mono);font-size:13px;padding:16px 16px 16px 52px;outline:none;min-width:0}
+.url-input::placeholder{color:var(--text-dim)}
+.btn-go{background:var(--accent);border:none;color:#000;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.05em;padding:0 28px;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap;clip-path:polygon(8px 0,100% 0,100% 100%,0 100%,0 8px)}
+.btn-go:hover{opacity:.88}
+.btn-go:active{transform:scale(.97)}
+.btn-go:disabled{opacity:.4;cursor:not-allowed}
+.platforms{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.pchip{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);border:1px solid var(--border);padding:3px 10px;transition:all .15s}
+.pchip:hover{color:var(--accent);border-color:var(--accent)}
+
+/* TERMINAL */
+.terminal{margin-top:24px;background:var(--surface);border:1px solid var(--border);display:none}
+.terminal.show{display:block}
+.term-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:8px}
+.term-dot{width:10px;height:10px;border-radius:50%}
+.term-dot.r{background:#ff5f57}.term-dot.y{background:#febc2e}.term-dot.g{background:#28c840}
+.term-title{font-size:10px;color:var(--text-dim);margin-left:auto;letter-spacing:.1em}
+.term-body{padding:20px;font-size:12px;line-height:1.8}
+.log-line{display:flex;gap:12px;align-items:flex-start}
+.log-line+.log-line{margin-top:4px}
+.log-ts{color:var(--text-dim);flex-shrink:0;font-size:10px;margin-top:2px}
+.log-msg{color:var(--text)}
+.log-msg.ok{color:var(--green)}.log-msg.err{color:var(--red)}.log-msg.warn{color:var(--yellow)}.log-msg.info{color:var(--accent)}
+.spin{display:inline-block;width:10px;height:10px;border:1px solid var(--text-dim);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prog-wrap{margin:8px 20px 0;height:2px;background:var(--border);overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);width:30%;animation:prog 1.4s ease-in-out infinite}
+@keyframes prog{0%{transform:translateX(-200%)}100%{transform:translateX(500%)}}
+.download-btn{display:inline-flex;align-items:center;gap:10px;margin:16px 20px;padding:12px 24px;background:var(--green);color:#000;font-family:var(--display);font-weight:700;font-size:14px;text-decoration:none;clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px);transition:opacity .15s}
+.download-btn:hover{opacity:.85}
+.download-btn svg{width:16px;height:16px}
+.ad-line{margin:0 20px 16px;font-size:11px;color:var(--text-dim);padding:8px 12px;border-left:2px solid var(--accent);background:var(--accent-dim)}
+
+/* HISTORY */
+.section-title{font-family:var(--display);font-size:20px;font-weight:700;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.history-empty{text-align:center;padding:60px 20px;color:var(--text-dim);font-size:12px}
+.history-list{display:flex;flex-direction:column;gap:1px}
+.history-item{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;border-left:3px solid transparent;transition:border-color .15s,background .15s}
+.history-item:hover{background:var(--surface2)}
+.history-item.ok{border-left-color:var(--green)}.history-item.error{border-left-color:var(--red)}.history-item.toobig{border-left-color:var(--yellow)}.history-item.cache{border-left-color:var(--accent)}
+.hi-icon{font-size:18px;line-height:1}
+.hi-body{overflow:hidden}
+.hi-url{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-meta{font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;gap:12px;flex-wrap:wrap}
+.hi-source{font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--border2);color:var(--text-dim)}
+
+/* ADMIN */
+.admin-lock{text-align:center;padding:60px 20px 40px}
+.admin-lock-icon{font-size:48px;margin-bottom:20px;opacity:.4}
+.admin-lock p{font-size:12px;color:var(--text-dim);margin-bottom:24px}
+.input-row{display:flex;gap:10px;max-width:400px;margin:0 auto}
+.inp{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:11px 14px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--text-dim)}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:11px 18px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--accent);color:#000}
+.btn.danger{border-color:var(--red);color:var(--red)}.btn.danger:hover{background:var(--red);color:#fff}
+.btn.sm{padding:7px 12px;font-size:10px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:24px}
+@media(max-width:560px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-cell{background:var(--surface);padding:20px 16px;position:relative;overflow:hidden}
+.stat-cell::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);opacity:0;transition:opacity .2s}
+.stat-cell:hover::after{opacity:1}
+.stat-v{font-family:var(--display);font-size:30px;font-weight:800;color:var(--accent);line-height:1}
+.stat-l{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-top:6px}
+.ban-section{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:16px}
+.ban-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px}
+.ban-list{display:flex;flex-direction:column;gap:6px;margin-top:16px;max-height:200px;overflow-y:auto}
+.ban-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);font-size:11px}
+.ban-id{color:var(--red)}
+.divider{height:1px;background:var(--border);margin:24px 0}
+.flash{font-size:11px;padding:10px 14px;border-left:2px solid var(--green);background:rgba(0,255,136,.06);color:var(--green);margin-top:14px;display:none}
+.flash.show{display:block}.flash.err{border-color:var(--red);background:rgba(255,71,87,.06);color:var(--red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--accent);padding:12px 20px;font-size:12px;max-width:300px;opacity:0;transform:translateY(10px);transition:all .25s;z-index:1000;pointer-events:none}
+.toast.show{opacity:1;transform:none}.toast.err{border-left-color:var(--red)}
+
+@media(max-width:480px){
+  .url-bar{flex-direction:column}.btn-go{padding:14px;clip-path:none}
+  .header{padding:24px 0 20px}.tab{padding:10px 14px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="logo-wrap">
+      <div class="logo-icon"></div>
+      <div class="logo-text">Pin<span>Save</span></div>
+    </div>
+    <div class="status-badge">online</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" onclick="switchTab('dl',this)">Скачать</button>
+    <button class="tab" onclick="switchTab('hist',this)">История<span class="badge" id="histCount">0</span></button>
+    <button class="tab" onclick="switchTab('admin',this)">Админ</button>
+  </nav>
+
+  <!-- DOWNLOADER -->
+  <div class="panel active" id="tab-dl">
+    <div class="dl-prompt">вставь ссылку на видео</div>
+    <div class="url-bar">
+      <input class="url-input" id="urlInput" type="url" placeholder="https://..." autocomplete="off" spellcheck="false">
+      <button class="btn-go" id="btnGo" onclick="startDl()">SAVE</button>
+    </div>
+    <div class="platforms">
+      <span class="pchip">Pinterest</span><span class="pchip">Instagram</span><span class="pchip">TikTok</span>
+      <span class="pchip">YouTube</span><span class="pchip">Twitter/X</span><span class="pchip">VK</span>
+      <span class="pchip">Reddit</span><span class="pchip">и другие</span>
+    </div>
+    <div class="terminal" id="terminal">
+      <div class="term-header">
+        <div class="term-dot r"></div><div class="term-dot y"></div><div class="term-dot g"></div>
+        <span class="term-title">process.log</span>
+      </div>
+      <div class="term-body" id="termLog"></div>
+      <div class="prog-wrap" id="progWrap"><div class="prog-fill"></div></div>
+      <a class="download-btn" id="dlBtn" href="#" style="display:none" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        СКАЧАТЬ ФАЙЛ
+      </a>
+      <div class="ad-line" id="adLine" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel" id="tab-hist">
+    <div class="section-title">История загрузок</div>
+    <div id="histBody"><div class="history-empty">Войди в админ-панель чтобы увидеть историю</div></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="panel" id="tab-admin">
+    <div class="admin-lock" id="adminLock">
+      <div class="admin-lock-icon">🔒</div>
+      <p>Введи пароль для доступа к панели администратора</p>
+      <div class="input-row">
+        <input class="inp" type="password" id="adminPass" placeholder="Пароль...">
+        <button class="btn" onclick="adminLogin()">ВОЙТИ</button>
+      </div>
+      <div class="flash" id="loginFlash"></div>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+      <div class="section-title">Статистика</div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <button class="btn sm" onclick="refreshStats()" style="margin-bottom:24px">↺ Обновить</button>
+      <div class="divider"></div>
+
+      <div class="section-title">Управление банами</div>
+      <div class="ban-section">
+        <div class="ban-title">// бан / разбан по Telegram user_id</div>
+        <div class="input-row" style="max-width:100%">
+          <input class="inp" id="banTarget" placeholder="User ID (число)">
+          <button class="btn" onclick="doBan()">БАН</button>
+          <button class="btn danger" onclick="doUnban()">РАЗБАН</button>
+        </div>
+        <div class="flash" id="banFlash"></div>
+        <div class="ban-list" id="banList"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="section-title">Последние запросы</div>
+      <div id="adminHistBody"><div class="history-empty">Нет данных</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function ts(){return new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function toast(msg,err=false){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast'+(err?' err':'');el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+function fmtTs(unix){return new Date(unix*1000).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='hist'&&adminPassword) fetchAdminHistory();
+}
+
+// ── DOWNLOADER ──
+let currentJobId=null,pollTimer=null;
+
+function startDl(){
+  const url=document.getElementById('urlInput').value.trim();
+  if(!url){toast('Введи ссылку',true);return}
+  document.getElementById('btnGo').disabled=true;
+  resetTerminal();showTerminal();
+  addLog('info','Отправка запроса...');
+  fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})})
+    .then(r=>r.json()).then(d=>{
+      if(d.detail){addLog('err','✕ '+d.detail);hideProg();document.getElementById('btnGo').disabled=false;return}
+      currentJobId=d.job_id;
+      addLog('ok',`✓ Принято. Позиция в очереди: ~${d.queue_pos}`);
+      startPoll();
+    }).catch(()=>{addLog('err','✕ Сервер недоступен');hideProg();document.getElementById('btnGo').disabled=false});
+}
+
+function startPoll(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(poll,2000)}
+
+function poll(){
+  if(!currentJobId)return;
+  fetch(`/api/status/${currentJobId}`).then(r=>r.json()).then(d=>{
+    if(d.status==='queued') addLog('info','⏳ В очереди...');
+    else if(d.status==='processing') addLog('info','<span class="spin"></span>Скачивание...');
+    else if(d.status==='done'){
+      clearInterval(pollTimer);hideProg();
+      addLog('ok',`✓ Готово!${d.size_mb?' '+d.size_mb+' МБ':''}`);
+      showDlBtn(`/api/file/${currentJobId}`);
+      if(d.ad_text){const a=document.getElementById('adLine');a.textContent=d.ad_text;a.style.display='block'}
+      document.getElementById('btnGo').disabled=false;
+      if(adminPassword)fetchAdminHistory();
+    } else if(d.status==='toobig'){
+      clearInterval(pollTimer);hideProg();
+      addLog('warn',`⚠ Файл слишком большой (${d.size_mb} МБ). Лимит 50 МБ.`);
+      document.getElementById('btnGo').disabled=false;
+    } else if(d.status==='error'){
+      clearInterval(pollTimer);hideProg();
+      addLog('err','✕ Ошибка: '+(d.error_msg||'попробуй другую ссылку'));
+      document.getElementById('btnGo').disabled=false;
+    }
+  }).catch(()=>{});
+}
+
+function showTerminal(){document.getElementById('terminal').classList.add('show')}
+function resetTerminal(){
+  document.getElementById('termLog').innerHTML='';
+  document.getElementById('dlBtn').style.display='none';
+  document.getElementById('adLine').style.display='none';
+  document.getElementById('progWrap').style.display='block';
+}
+function addLog(type,msg){
+  const log=document.getElementById('termLog');
+  const line=document.createElement('div');
+  line.className='log-line';
+  line.innerHTML=`<span class="log-ts">${ts()}</span><span class="log-msg ${type}">${msg}</span>`;
+  log.appendChild(line);log.scrollTop=log.scrollHeight;
+}
+function hideProg(){document.getElementById('progWrap').style.display='none'}
+function showDlBtn(url){const b=document.getElementById('dlBtn');b.href=url;b.style.display='inline-flex'}
+
+document.getElementById('urlInput').addEventListener('paste',()=>{
+  setTimeout(()=>{const v=document.getElementById('urlInput').value.trim();if(v.startsWith('http'))startDl()},100)
+});
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')startDl()});
+
+// ── HISTORY ──
+const STATUS_ICON={ok:'✅',error:'❌',toobig:'⚠️',cache:'⚡'};
+const STATUS_LABEL={ok:'Скачано',error:'Ошибка',toobig:'Слишком большое',cache:'Из кэша'};
+
+function renderHistoryItems(items,container){
+  if(!items||!items.length){container.innerHTML='<div class="history-empty">История пуста</div>';return}
+  container.innerHTML=items.map(h=>`
+    <div class="history-item ${h.status}">
+      <div class="hi-icon">${STATUS_ICON[h.status]||'📎'}</div>
+      <div class="hi-body">
+        <div class="hi-url" title="${h.url}">${h.url}</div>
+        <div class="hi-meta">
+          <span>${STATUS_LABEL[h.status]||h.status}</span>
+          ${h.size_mb?`<span>${h.size_mb} МБ</span>`:''}
+          <span>${fmtTs(h.ts)}</span>
+        </div>
+      </div>
+      <div class="hi-source">${h.source||'web'}</div>
+    </div>`).join('');
+  document.getElementById('histCount').textContent=items.length;
+}
+
+// ── ADMIN ──
+let adminPassword='';
+
+function adminLogin(){
+  const pass=document.getElementById('adminPass').value;
+  if(!pass){flash('loginFlash','Введи пароль',true);return}
+  fetch('/api/admin/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})})
+    .then(r=>{
+      if(!r.ok){flash('loginFlash','Неверный пароль',true);return null}
+      adminPassword=pass;
+      document.getElementById('adminLock').style.display='none';
+      document.getElementById('adminPanel').style.display='block';
+      return r.json();
+    }).then(d=>{if(d){renderStats(d);loadBans();fetchAdminHistory()}});
+}
+
+function refreshStats(){
+  fetch('/api/admin/stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword})})
+    .then(r=>r.json()).then(renderStats).catch(()=>toast('Ошибка',true));
+}
+
+function renderStats(d){
+  const items=[
+    ['Запросов',d.total_requests],['Скачано',d.downloads_ok],
+    ['Из кэша',d.served_from_cache],['Ошибок',d.errors],
+    ['Большие',d.blocked_big],['Пользователей',d.user_count],
+    ['Очередь',d.queue_size],['Забанено',d.banned_count],
+  ];
+  document.getElementById('statsGrid').innerHTML=items.map(([l,v])=>
+    `<div class="stat-cell"><div class="stat-v">${v??'-'}</div><div class="stat-l">${l}</div></div>`).join('');
+}
+
+function loadBans(){
+  fetch(`/api/admin/banned?password=${encodeURIComponent(adminPassword)}`)
+    .then(r=>r.json()).then(d=>{
+      const list=document.getElementById('banList');
+      if(!d.banned||!d.banned.length){list.innerHTML='<div style="font-size:11px;color:var(--text-dim);padding:8px 0">Забаненных нет</div>';return}
+      list.innerHTML=d.banned.map(id=>
+        `<div class="ban-item"><span class="ban-id">${id}</span><button class="btn sm danger" onclick="quickUnban(${id})">разбан</button></div>`
+      ).join('');
+    });
+}
+
+function quickUnban(id){
+  fetch('/api/admin/unban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword,target:id})})
+    .then(()=>{toast(`Разбанен: ${id}`);loadBans()});
+}
+
+function doBan(){
+  const t=parseInt(document.getElementById('banTarget').value);
+  if(!t){flash('banFlash','Введи корректный User ID',true);return}
+  fetch('/api/admin/ban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword,target:t})})
+    .then(r=>r.json()).then(d=>{if(d.ok){flash('banFlash',`Забанен: ${t}`);loadBans()}});
+}
+
+function doUnban(){
+  const t=parseInt(document.getElementById('banTarget').value);
+  if(!t){flash('banFlash','Введи корректный User ID',true);return}
+  fetch('/api/admin/unban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword,target:t})})
+    .then(r=>r.json()).then(d=>{if(d.ok){flash('banFlash',`Разбанен: ${t}`);loadBans()}});
+}
+
+function fetchAdminHistory(){
+  fetch('/api/admin/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword})})
+    .then(r=>r.json()).then(d=>{
+      renderHistoryItems(d.history,document.getElementById('adminHistBody'));
+      renderHistoryItems(d.history,document.getElementById('histBody'));
+    }).catch(()=>{});
+}
+
+function flash(id,msg,err=false){
+  const el=document.getElementById(id);
+  el.textContent=msg;el.className='flash show'+(err?' err':'');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+document.getElementById('adminPass').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin()});
+</script>
+</body>
+</html>
+
